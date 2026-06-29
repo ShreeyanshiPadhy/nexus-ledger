@@ -1,4 +1,3 @@
-```markdown
 # 📐 NexusLedger
 
 > **Centralized Enterprise State Orchestration & Multi-Tab Industrial Operations Ledger**
@@ -54,8 +53,6 @@ src/
 ├── utils/
 │   └── formPayloadTransformer.js # Packs final key/value configurations into deep structural JSON structures
 └── styles.css                  # Tailored v4 utility classes and vanilla overrides
-
-```
 
 ---
 
