@@ -1,0 +1,659 @@
+{
+  "tabs": [
+    {
+      "id": "Tab_1_Basics",
+      "label": "Process Unit Basics",
+      "fields": [
+        { 
+          "id": "unit_name", 
+          "label": "Process Unit Identifier", 
+          "type": "text", 
+          "placeholder": "e.g., Hydrocracker-A", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^[a-zA-Z0-9- ]{3,}$", 
+          "errors": { "empty": "Unit Identifier is required.", "invalid": "At least 3 alphanumeric characters." } 
+        },
+        {
+          "id": "fluid_phase",
+          "label": "Secondary Fluid Phase Layout",
+          "type": "select",
+          "required": true,
+          "gridSpan": "half",
+          "options": [
+            { "label": "Select phase...", "value": "" },
+            { "label": "Gas / Vapor Phase", "value": "gas" },
+            { "label": "Liquid Phase Blend", "value": "liquid" }
+          ],
+          "destructiveTriggers": {
+            "warnOnValueChange": true,
+            "warningMessage": "Changing the Primary Fluid Phase will clear down all calculations and metrics entered on subsequent tabs. Do you wish to proceed?",
+            "scope": "downstream"
+          },
+          "errors": { "empty": "Please select the fluid phase layout.", "invalid": "" }
+        },
+        { 
+          "id": "stream_tag", 
+          "label": "P&ID Tag Reference Code", 
+          "type": "text", 
+          "placeholder": "e.g., 10-HC-3001-2X", 
+          "required": true, 
+          "gridSpan": "half",
+          "errors": { "empty": "P&ID blueprint cross-reference tag is required." } 
+        },
+        { 
+          "id": "fluid_type", 
+          "label": "Hydrocarbon Stream Classification", 
+          "type": "select", 
+          "gridSpan": "half",
+          "options": [
+            { "label": "Sour Crude Blend (High Sulfur)", "value": "sour" }, 
+            { "label": "Sweet Distillate Fraction", "value": "sweet" }, 
+            { "label": "Heavy Bitumen / Slurry Tanking", "value": "heavy" }, 
+            { "label": "Produced Process Water", "value": "water" }
+          ], 
+          "required": true,
+          "errors": { "empty": "Fluid classification category selection is mandatory." }
+        },
+        { 
+          "id": "operating_mode", 
+          "label": "Unit Operational Feed Profile", 
+          "type": "radio", 
+          "gridSpan": "full",
+          "options": [
+            { "label": "Continuous Fed Stream (Steady State Flow)", "value": "continuous" }, 
+            { "label": "Batch Cyclic Loading (Time-Variant Blocks)", "value": "batch" }, 
+            { "label": "Intermittent Standby (Surge Reservoir)", "value": "intermittent" }
+          ], 
+          "required": true,
+          "errors": { "empty": "Operating profile mode must be specified." }
+        }
+      ]
+    },
+    {
+      "id": "Tab_2_Metallurgy",
+      "label": "Metallurgy & Vessel Integrity",
+      "fields": [
+        {
+          "id": "moc",
+          "label": "Material of Construction (MOC) Selection",
+          "type": "select",
+          "required": true,
+          "gridSpan": "half",
+          "optionsFromReduxKey": "metallurgySpecs",
+          "errors": { "empty": "Metallurgy baseline specification is required." }
+        },
+        { 
+          "id": "joint_efficiency", 
+          "label": "Welding Joint Efficiency Coefficient (E)", 
+          "type": "select", 
+          "gridSpan": "half",
+          "options": [
+            { "label": "Fully Radiographed Seamless Connections (1.00)", "value": "1.0" }, 
+            { "label": "Spot Non-Destructive Examined (0.85)", "value": "0.85" }, 
+            { "label": "Unexamined Non-Critical Welds (0.70)", "value": "0.7" }
+          ], 
+          "required": true,
+          "errors": { "empty": "Joint coefficient metric selection required." }
+        },
+        { 
+          "id": "corrosion_allowance", 
+          "label": "Design Corrosion Allowance Boundary", 
+          "type": "text", 
+          "placeholder": "e.g., 3.0", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "errors": { "empty": "Corrosion allowance safety depth thickness must be mapped.", "invalid": "Must be positive numeric value." } 
+        },
+        { 
+          "id": "nominal_wall", 
+          "label": "Nominal Pipe Schedule Wall Thickness", 
+          "type": "select", 
+          "gridSpan": "half",
+          "options": [
+            { "label": "Select pipe wall thickness schedule...", "value": "" },
+            { "label": "Schedule 40 (Standard Operational Wall)", "value": "sch40" }, 
+            { "label": "Schedule 80 (Extra Heavy Safety Wall)", "value": "sch80" }, 
+            { "label": "Schedule 160 (High Pressure Pipeline Wall)", "value": "sch160" }
+          ], 
+          "required": true,
+          "errors": { "empty": "Vessel/pipe mechanical profile wall rating required." }
+        },
+        { 
+          "id": "pwht_required", 
+          "label": "Post-Weld Heat Treatment (PWHT) Protocol", 
+          "type": "checkbox", 
+          "required": false,
+          "gridSpan": "full"
+        },
+        { 
+          "id": "h2s_service", 
+          "label": "Sour Gas NACE Compliance (MR0175/ISO 15156)", 
+          "type": "checkbox", 
+          "required": false,
+          "gridSpan": "full"
+        }
+      ]
+    },
+    {
+      "id": "Tab_3_Thermodynamics",
+      "label": "Thermodynamics safety Envelope",
+      "calculations": [
+        {
+          "type": "THERMO_SAFETY_ENVELOPE",
+          "outputs": [
+            { "label": "Material Structural Yield Strengths:", "metricKey": "selectedMOCOutput", "variant": "bold" },
+            { "label": "Calculated Max Pressure Allowance Bounds:", "metricKey": "maxSafePressureOutput", "variant": "bold" },
+            { "label": "Overpressure Operational Excursion Risk:", "metricKey": "isPressureExceeded", "variant": "statusPill" }
+          ]
+        },
+        {
+          "type": "SCHEMA_MATH",
+          "outputs": [
+            {
+              "label": "Thermal Safety Margin",
+              "metricKey": "tempMargin",
+              "variant": "bold",
+              "formula": "[design_temp] - [op_temp]",
+              "decimals": 1
+            },
+            {
+              "label": "System Pressure Ratio (%)",
+              "metricKey": "pressureRatio",
+              "variant": "indigo",
+              "formula": "([op_press] / [design_press]) * 100",
+              "decimals": 2
+            }
+          ]
+        }
+      ],
+      "fields": [
+        { 
+          "id": "op_temp", 
+          "label": "Normal Operating Stream Temperature", 
+          "type": "text", 
+          "placeholder": "e.g., 280", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^-?\\d+(\\.\\d+)?$", 
+          "unitGroup": "temperature",
+          "errors": { "empty": "Operating temperature tracking is mandatory to map thermal design.", "invalid": "Please input a valid numeric value." } 
+        },
+        { 
+          "id": "design_temp", 
+          "label": "Maximum Structural Design Temperature", 
+          "type": "text", 
+          "placeholder": "e.g., 350", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^-?\\d+(\\.\\d+)?$", 
+          "unitGroup": "temperature",
+          "errors": { "empty": "Upper engineering thermal constraints must be designated.", "invalid": "Please input a valid numeric value." } 
+        },
+        { 
+          "id": "op_press", 
+          "label": "Normal Operating Process Pressure", 
+          "type": "text", 
+          "placeholder": "e.g., 35.0", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "unitGroup": "pressure",
+          "errors": { "empty": "Baseline operational stream load pressure tracking is required.", "invalid": "Value must be positive number." } 
+        },
+        { 
+          "id": "design_press", 
+          "label": "Maximum Allowed Vessel Design Pressure", 
+          "type": "text", 
+          "placeholder": "e.g., 45.5", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "unitGroup": "pressure",
+          "errors": { "empty": "Vessel high-pressure bursting barrier metric is required.", "invalid": "Value must be a positive number." } 
+        },
+        { 
+          "id": "vapor_pressure", 
+          "label": "True Vapor Pressure (TVP @ Peak Temp)", 
+          "type": "text", 
+          "placeholder": "e.g., 1.2", 
+          "required": false, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "unitGroup": "pressure",
+          "errors": { "invalid": "Must be valid positive pressure." } 
+        },
+        { 
+          "id": "critical_temp", 
+          "label": "Fluid Thermodynamic Critical Temperature (Tc)", 
+          "type": "text", 
+          "placeholder": "e.g., 364.9", 
+          "required": false, 
+          "gridSpan": "half",
+          "regex": "^-?\\d+(\\.\\d+)?$", 
+          "unitGroup": "temperature",
+          "errors": { "invalid": "Must be valid real temperature figure." } 
+        }
+      ]
+    },
+    {
+      "id": "Tab_4_Kinetics",
+      "label": "Reaction Kinetics Profile",
+      "skipCondition": {
+        "field": "fluid_phase",
+        "value": "liquid"
+      },
+      "calculations": [
+        {
+          "type": "SCHEMA_MATH",
+          "outputs": [
+            {
+              "label": "Effective Bed Residence Time (s)",
+              "metricKey": "residenceTime",
+              "variant": "indigo",
+              "formula": "(3600 / [space_velocity]) * [bed_voidage]",
+              "decimals": 2
+            }
+          ]
+        }
+      ],
+      "fields": [
+        { 
+          "id": "space_velocity", 
+          "label": "Gas Hourly Space Velocity Multiplier (GHSV)", 
+          "type": "text", 
+          "placeholder": "e.g., 1500", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "errors": { "empty": "Space velocity metrics are compulsory for reactive catalyst modeling.", "invalid": "Must be a positive numeric value." } 
+        },
+        { 
+          "id": "conversion_target", 
+          "label": "Target Single-Pass Fractional Conversion", 
+          "type": "text", 
+          "placeholder": "e.g., 65.0", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "errors": { "empty": "Chemical conversion yield parameters cannot be blank.", "invalid": "Enter numeric scale percentage value." } 
+        },
+        { 
+          "id": "activation_energy", 
+          "label": "Arrhenius Catalytic Activation Energy (Ea)", 
+          "type": "text", 
+          "placeholder": "e.g., 85.4", 
+          "required": false, 
+          "gridSpan": "half",
+          "regex": "^\\d+(\\.\\d+)?$", 
+          "errors": { "invalid": "Must be standard positive numeric index value." } 
+        },
+        { 
+          "id": "bed_voidage", 
+          "label": "Catalyst Fixed Packed Bed Void Fraction (ε)", 
+          "type": "text", 
+          "placeholder": "e.g., 0.40", 
+          "required": true, 
+          "gridSpan": "half",
+          "regex": "^0\\.\\d+$", 
+          "errors": { "empty": "Void coefficient porosity boundary required.", "invalid": "Must be decimal between 0.0 and 1.0." } 
+        },
+        { 
+          "id": "catalyst_spec", 
+          "label": "Active Catalyst Chemical Specification Compound & Mesh Description Log", 
+          "type": "textarea", 
+          "placeholder": "e.g., Gamma-Alumina Extrudates doped with 0.5wt% Precious Platinum / Palladium mesh clusters to execute sulfur-cracking procedures safely...", 
+          "required": false, 
+          "gridSpan": "full",
+          "errors": { "empty": "", "invalid": "" } 
+        }
+      ]
+    },
+    {
+      "id": "Tab_5_Hydraulics",
+      "label": "Hydraulics Control Matrix",
+      "fields": [
+        {
+          "id": "hydraulics_notes",
+          "label": "Fluid Hydrodynamics Operations Directive Memo",
+          "type": "textarea",
+          "placeholder": "Enter specific control loop parameters, manual throttle safety limits, and valve alignment notes for the hydraulic loops configured below...",
+          "required": false,
+          "gridSpan": "full"
+        },
+        {
+          "id": "throttle_pair_1",
+          "label": "Main Reactor Hydrocarbon Feed Input Loop Control",
+          "type": "dropdown-input-pair",
+          "required": false,
+          "gridSpan": "half",
+          "dropdownField": {
+            "id": "hydraulics_throttle_type_1",
+            "options": [
+              { "label": "Select Valve Actuator Loop...", "value": "" },
+              { "label": "Loop-101 (High Capacity Automated Gate Valve)", "value": "type_a" },
+              { "label": "Loop-102 (Precision Modulating Linear Globe Valve)", "value": "type_b" },
+              { "label": "Loop-103 (Fail-Safe Emergency Quarter-Turn Ball)", "value": "type_c" }
+            ]
+          },
+          "calculatedField": {
+            "id": "throttle_calculated_metric_1",
+            "metricKey": "throttleOutputMetric_1",
+            "placeholder": "Awaiting telemetry selection..."
+          },
+          "errors": { "empty": "Please map an active valve actuator loop profile setting.", "invalid": "" }
+        },
+        {
+          "id": "throttle_pair_2",
+          "label": "Overhead Reactor Vapor Bleed Relief Line Control",
+          "type": "dropdown-input-pair",
+          "required": false,
+          "gridSpan": "half",
+          "dropdownField": {
+            "id": "hydraulics_throttle_type_2",
+            "options": [
+              { "label": "Select Valve Actuator Loop...", "value": "" },
+              { "label": "Loop-201 (High Capacity Automated Gate Valve)", "value": "type_a" },
+              { "label": "Loop-202 (Precision Modulating Linear Globe Valve)", "value": "type_b" },
+              { "label": "Loop-203 (Fail-Safe Emergency Quarter-Turn Ball)", "value": "type_c" }
+            ]
+          },
+          "calculatedField": {
+            "id": "throttle_calculated_metric_2",
+            "metricKey": "throttleOutputMetric_2",
+            "placeholder": "Awaiting telemetry selection..."
+          },
+          "errors": { "empty": "Please map an active valve actuator loop profile setting.", "invalid": "" }
+        },
+        {
+          "id": "throttle_pair_3",
+          "label": "Bottoms Fluid Fraction Heavy Recirculation Loop",
+          "type": "dropdown-input-pair",
+          "required": false,
+          "gridSpan": "half",
+          "dropdownField": {
+            "id": "hydraulics_throttle_type_3",
+            "options": [
+              { "label": "Select Valve Actuator Loop...", "value": "" },
+              { "label": "Loop-301 (High Capacity Automated Gate Valve)", "value": "type_a" },
+              { "label": "Loop-302 (Precision Modulating Linear Globe Valve)", "value": "type_b" },
+              { "label": "Loop-303 (Fail-Safe Emergency Quarter-Turn Ball)", "value": "type_c" }
+            ]
+          },
+          "calculatedField": {
+            "id": "throttle_calculated_metric_3",
+            "metricKey": "throttleOutputMetric_3",
+            "placeholder": "Awaiting telemetry selection..."
+          },
+          "errors": { "empty": "Please map an active valve actuator loop profile setting.", "invalid": "" }
+        },
+        {
+          "id": "throttle_pair_4",
+          "label": "Interstage Thermal Liquid Spray Quench Actuator",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": {
+            "id": "hydraulics_throttle_type_4",
+            "options": [
+              { "label": "Select Valve Actuator Loop...", "value": "" },
+              { "label": "Loop-401 (High Capacity Automated Gate Valve)", "value": "type_a" },
+              { "label": "Loop-402 (Precision Modulating Linear Globe Valve)", "value": "type_b" },
+              { "label": "Loop-403 (Fail-Safe Emergency Quarter-Turn Ball)", "value": "type_c" }
+            ]
+          },
+          "calculatedField": {
+            "id": "throttle_calculated_metric_4",
+            "metricKey": "throttleOutputMetric_4",
+            "placeholder": "Awaiting telemetry selection..."
+          },
+          "errors": { "empty": "Please map an active valve actuator loop profile setting.", "invalid": "" }
+        },
+        {
+          "id": "throttle_pair_5",
+          "label": "Emergency Depressurization / Flare Vent Header",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": {
+            "id": "hydraulics_throttle_type_5",
+            "options": [
+              { "label": "Select Valve Actuator Loop...", "value": "" },
+              { "label": "Loop-501 (High Capacity Automated Gate Valve)", "value": "type_a" },
+              { "label": "Loop-502 (Precision Modulating Linear Globe Valve)", "value": "type_b" },
+              { "label": "Loop-503 (Fail-Safe Emergency Quarter-Turn Ball)", "value": "type_c" }
+            ]
+          },
+          "calculatedField": {
+            "id": "throttle_calculated_metric_5",
+            "metricKey": "throttleOutputMetric_5",
+            "placeholder": "Awaiting telemetry selection..."
+          },
+          "errors": { "empty": "Please map an active valve actuator loop profile setting.", "invalid": "" }
+        },
+        {
+          "id": "throttle_pair_6",
+          "label": "Sour Condensate Stripper Bottoms Bleed Line",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": {
+            "id": "hydraulics_throttle_type_6",
+            "options": [
+              { "label": "Select Valve Actuator Loop...", "value": "" },
+              { "label": "Loop-601 (High Capacity Automated Gate Valve)", "value": "type_a" },
+              { "label": "Loop-602 (Precision Modulating Linear Globe Valve)", "value": "type_b" },
+              { "label": "Loop-603 (Fail-Safe Emergency Quarter-Turn Ball)", "value": "type_c" }
+            ]
+          },
+          "calculatedField": {
+            "id": "throttle_calculated_metric_6",
+            "metricKey": "throttleOutputMetric_6",
+            "placeholder": "Awaiting telemetry selection..."
+          },
+          "errors": { "empty": "Please map an active valve actuator loop profile setting.", "invalid": "" }
+        },
+        {
+          "id": "system_arm_status",
+          "label": "Authorize Hydraulics Control Overrides & Critical Valve Tripping Action Logs",
+          "type": "checkbox",
+          "required": true,
+          "gridSpan": "full",
+          "errors": { "empty": "You must authorize hydraulic overrides compliance tracking before submitting logs.", "invalid": "" }
+        }
+      ]
+    },
+    {
+      "id": "Tab_6_Advanced_Routing",
+      "label": "Advanced Routing & Flow",
+      "fields": [
+        {
+          "id": "route_pair_1",
+          "label": "Main Crude Charge Routing Header",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_1", "optionsFromReduxKey": "pipelineDestinations"},
+          "calculatedField": { "id": "route_calc_1", "metricKey": "routeOutputMetric_1", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_2",
+          "label": "Atmospheric Tower Bypass Line",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_2", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_2", "metricKey": "routeOutputMetric_2", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_3",
+          "label": "Heavy Gas Oil (HGO) Draw-Off Loop",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_3", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_3", "metricKey": "routeOutputMetric_3", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_4",
+          "label": "Naphtha Stabilizer Overhead Feed",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_4", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_4", "metricKey": "routeOutputMetric_4", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_5",
+          "label": "Sour Water Stripper Inlet Header",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_5", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_5", "metricKey": "routeOutputMetric_5", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_6",
+          "label": "Flare Gas Recovery Bypass Valve",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_6", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_6", "metricKey": "routeOutputMetric_6", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_7",
+          "label": "Reactor Effluent Cooling Loop",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_7", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_7", "metricKey": "routeOutputMetric_7", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_8",
+          "label": "Desalter Wash Water Injection Loop",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_8", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_8", "metricKey": "routeOutputMetric_8", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_9",
+          "label": "Main Fractionator Bottoms Quench",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_9", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_9", "metricKey": "routeOutputMetric_9", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_10",
+          "label": "Auxiliary Emergency Depressurization",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_10", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_10", "metricKey": "routeOutputMetric_10", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_11",
+          "label": "Kerosene Merox Treatment Feed",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_11", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_11", "metricKey": "routeOutputMetric_11", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_12",
+          "label": "Light Cycle Oil (LCO) Rundown Line",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_12", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_12", "metricKey": "routeOutputMetric_12", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_13",
+          "label": "Slurry Oil Settler Recycle Circuit",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_13", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_13", "metricKey": "routeOutputMetric_13", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_14",
+          "label": "Amine Regenerator Acid Gas Overhead",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_14", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_14", "metricKey": "routeOutputMetric_14", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_15",
+          "label": "Tail Gas Unit Catalytic Reactor Feed",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "dropdownField": { "id": "route_valve_15", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_15", "metricKey": "routeOutputMetric_15", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_16",
+          "label": "Debutanizer Bottoms Reboiler Stream",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": { "id": "route_valve_16", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_16", "metricKey": "routeOutputMetric_16", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_17",
+          "label": "High-Pressure Separator Gas Bleed",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": { "id": "route_valve_17", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_17", "metricKey": "routeOutputMetric_17", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_18",
+          "label": "Vacuum Distillation Column Preheater Bypass",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": { "id": "route_valve_18", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_18", "metricKey": "routeOutputMetric_18", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_19",
+          "label": "Coker Fractionator Lean Oil Absorbent",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": { "id": "route_valve_19", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_19", "metricKey": "routeOutputMetric_19", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        },
+        {
+          "id": "route_pair_20",
+          "label": "Isomerization Fuel Gas Surge Header",
+          "type": "dropdown-input-pair",
+          "gridSpan": "half",
+          "required": false,
+          "dropdownField": { "id": "route_valve_20", "options": [ { "label": "Select Routing Protocol...", "value": "" }, { "label": "Manifold Alpha (High Capacity)", "value": "type_x" }, { "label": "Manifold Beta (Metered)", "value": "type_y" } ] },
+          "calculatedField": { "id": "route_calc_20", "metricKey": "routeOutputMetric_20", "placeholder": "Awaiting telemetry..." },
+          "errors": { "empty": "Routing protocol required." }
+        }
+      ]
+    }
+  ]
+}
